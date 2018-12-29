@@ -52,6 +52,7 @@ def get_data_loaders(train_batch_size, val_batch_size, test_batch_size):
 
 def create_summary_writer(model, data_loader, log_dir):
     writer = SummaryWriter(log_dir=log_dir)
+
     data_loader_iter = iter(data_loader)
     x, y = next(data_loader_iter)
     try:
@@ -78,13 +79,13 @@ def run(train_batch_size, val_batch_size, test_batch_size, epochs, lr, momentum,
 
     start = time.time()
 
-    # @trainer.on(Events.ITERATION_COMPLETED)
-    # def log_training_loss(engine):
-    #     iter = (engine.state.iteration - 1) % len(train_loader) + 1
-    #     if iter % log_interval == 0:
-    #         print("Epoch[{}] Iteration[{}/{}] Loss: {:.2f}"
-    #               .format(engine.state.epoch, iter, len(train_loader), engine.state.output))
-    #         writer.add_scalar("training/loss", engine.state.output, engine.state.iteration)
+    @trainer.on(Events.ITERATION_COMPLETED)
+    def log_training_loss(engine):
+        iter = (engine.state.iteration - 1) % len(train_loader) + 1
+        if iter % log_interval == 0:
+            print("Epoch[{}] Iteration[{}/{}] Loss: {:.2f}"
+                  .format(engine.state.epoch, iter, len(train_loader), engine.state.output))
+            writer.add_scalar("training/loss", engine.state.output, engine.state.iteration)
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def log_training_results(engine):
@@ -122,7 +123,7 @@ def run(train_batch_size, val_batch_size, test_batch_size, epochs, lr, momentum,
         writer.add_scalar("test/avg_accuracy", avg_accuracy)
 
     trainer.run(train_loader, max_epochs=epochs)
-
+    print("TensorBoardX output at: "  + log_dir)
     writer.close()
 
 
@@ -136,7 +137,7 @@ if __name__ == '__main__':
                         help='input batch size for validation (default: 1000)')
     parser.add_argument('--test_batch_size', type=int, default=1,
                         help='input batch size for test (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=750,
+    parser.add_argument('--epochs', type=int, default=100,
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--lr', type=float, default=0.001,
                         help='learning rate (default: 0.01)')
@@ -144,10 +145,11 @@ if __name__ == '__main__':
                         help='SGD momentum (default: 0.5)')
     parser.add_argument('--log_interval', type=int, default=10,
                         help='how many batches to wait before logging training status')
-    parser.add_argument("--log_dir", type=str, default="tensorboard_logs",
+    parser.add_argument("--log_dir", type=str, default="tmp/pytorch_iris_logs_" + str(time.time()),
                         help="log directory for Tensorboard log output")
 
     args = parser.parse_args()
+    print(args.log_dir)
 
     run(args.batch_size, args.val_batch_size, args.test_batch_size, args.epochs, args.lr, args.momentum,
         args.log_interval, args.log_dir)

@@ -49,14 +49,15 @@ def main(_):
     model.compile(optimizer=optimizer, loss='categorical_crossentropy',
                   metrics=["accuracy"])
 
-    tensorboard = TensorBoard(log_dir="tmp/logs/keras.{}".format(time.time()))
+    tensorboard = TensorBoard(log_dir="tmp/keras_iris_logs_{}".format(time.time()))
     print("tensorboard at:" + tensorboard.log_dir)
-    model.fit(x_train, y_train, epochs=750, validation_split=0.1, batch_size=1, verbose=1,
+    model.fit(x_train, y_train, epochs=100, validation_split=0.1, batch_size=1, verbose=1,
               callbacks=[tensorboard])
 
     loss, accuracy = model.evaluate(x_test, y_test, verbose=1)
 
     logging.info("Time = {:.2f} Loss = {:.2f} Accuracy = {:.2f}".format(time.time() - start, loss, accuracy))
+    print("Tensorboard output at: " + tensorboard.log_dir)
 
 
 if __name__ == '__main__':
