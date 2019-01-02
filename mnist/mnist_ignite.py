@@ -25,7 +25,7 @@ class Net(nn.Module):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
         self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
-        self.conv2_drop = nn.Dropout2d()
+        self.conv2_drop = nn.Dropout2d(p=0.2)
         self.fc1 = nn.Linear(320, 50)
         self.fc2 = nn.Linear(50, 10)
 
@@ -34,7 +34,7 @@ class Net(nn.Module):
         x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
         x = x.view(-1, 320)
         x = F.relu(self.fc1(x))
-        x = F.dropout(x, training=self.training)
+        x = F.dropout(x, p=0.2, training=self.training)
         x = self.fc2(x)
         return F.log_softmax(x, dim=-1)
 
@@ -62,6 +62,7 @@ def create_summary_writer(model, data_loader, log_dir):
 
 
 def run(train_batch_size, val_batch_size, epochs, lr, momentum, log_interval, log_dir):
+    print("TensorboardX Output at:", log_dir)
     train_loader, val_loader = get_data_loaders(train_batch_size, val_batch_size)
     model = Net()
     writer = create_summary_writer(model, train_loader, log_dir)
@@ -70,9 +71,8 @@ def run(train_batch_size, val_batch_size, epochs, lr, momentum, log_interval, lo
     if torch.cuda.is_available():
         device = 'cuda'
 
-    # optimizer = SGD(model.parameters(), lr=lr, momentum=momentum)
     optimizer = Adam(model.parameters(), lr=lr)
-    trainer = create_supervised_trainer(model, optimizer, F.nll_loss, device=device)
+    trainer = create_supervised_trainer(model, optimizer, F.cross_entropy, device=device)
     evaluator = create_supervised_evaluator(model,
                                             metrics={'accuracy': Accuracy(),
                                                      'nll': Loss(F.nll_loss)},
@@ -125,6 +125,7 @@ def run(train_batch_size, val_batch_size, epochs, lr, momentum, log_interval, lo
     trainer.run(train_loader, max_epochs=epochs)
 
     writer.close()
+    print("TensorboardX Output at:", log_dir)
 
 
 if __name__ == "__main__":
@@ -141,7 +142,7 @@ if __name__ == "__main__":
                         help='SGD momentum (default: 0.5)')
     parser.add_argument('--log_interval', type=int, default=10,
                         help='how many batches to wait before logging training status')
-    parser.add_argument("--log_dir", type=str, default="tensorboard_logs",
+    parser.add_argument("--log_dir", type=str, default="tmp/pytorch_mnist_logs_" + str(time.time()),
                         help="log directory for Tensorboard log output")
 
     args = parser.parse_args()
