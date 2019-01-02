@@ -56,3 +56,15 @@ class Indexer:
 
         elif type(item) == self.idx_type:
             return self.get_obj(item)
+    def __len__(self):
+        assert len(self.obj2int) == len(self.int2obj)
+        return len(self.obj2int)
+if __name__ == '__main__':
+    # Run Indexer Test
+    word_indexer = Indexer.create_indexer()
+    word_indexer.add("fluffy")
+    word_indexer.add("bunny")
+
+    print(word_indexer["fluffy"], word_indexer[3])
+    print(word_indexer["bunny"], word_indexer[1])
+    print(word_indexer["rabbit"], word_indexer[2])
