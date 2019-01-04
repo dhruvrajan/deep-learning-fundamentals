@@ -5,6 +5,8 @@ import torch.nn.functional as F
 from torch import Tensor
 import torch
 from utils.indexer import Indexer
+from utils.glove_embeddings import load_glove_embeddings
+from sklearn.preprocessing import LabelBinarizer
 
 TRAIN_PATH = "data/sentiment-analysis/train.txt"
 DEV_PATH = "data/sentiment-analysis/dev.txt"
@@ -16,7 +18,6 @@ class SentimentExample:
         self.indexed_words = indexed_words
         self.words = words
         self.pad_to = pad_to if pad_to else len(indexed_words)
-
 
     def __repr__(self):
         return str(self.sentiment) + ", " + str(self.words[:min(len(self.words), 50)]) + "...\n"
@@ -54,11 +55,11 @@ def clean_str(string):
     return string
 
 
-def read_sentiment_data(path):
+def read_sentiment_data(path, relativized_indexer=None):
     sentences = []
     indexed_sentences = []
     sentiments = []
-    word_indexer = Indexer.create_indexer()
+    word_indexer = Indexer.create_indexer() if not relativized_indexer else relativized_indexer
     with open(path, encoding="iso8859") as f:
         for line in f:
             sentiment, sentence = line.strip().split("\t")
@@ -67,8 +68,9 @@ def read_sentiment_data(path):
             sentiments.append(int(sentiment))
             sentences.append(word_tokenize(sentence))
 
-            for word in sentences[-1]:
-                word_indexer.add(word.strip().lower())
+            if not relativized_indexer:
+                for word in sentences[-1]:
+                    word_indexer.add(word.strip().lower())
 
     max_len = 0
     for sentence in sentences:
@@ -77,7 +79,7 @@ def read_sentiment_data(path):
         if len(indexed_words) > max_len:
             max_len = len(indexed_words)
 
-    return [SentimentExample(*pair) for pair in zip(sentiments, indexed_sentences, sentences)], word_indexer, max_len
+    return [SentimentExample(*pair) for pair in zip(sentiments, indexed_sentences, sentences)], word_indexer
 
 
 class SentimentDataset:
@@ -86,11 +88,6 @@ class SentimentDataset:
         self.word_indexer = word_indexer
         self.max_len = len(max(self.examples, key=lambda ex: len(ex.indexed_words)).indexed_words)
 
-        # def to_tensor_dataset(self):
-        #     indexed_words = [ex.indexed_words for ex in self.examples]
-        # sentiments = [ex.sentiment for ex in self.examples]
-
-        # return TensorDataset(torch)
 
     def make_sentence_tensor(self, indexed_words, pad_to):
         assert len(indexed_words) <= pad_to
@@ -106,14 +103,17 @@ class SentimentDataset:
         sentence_tensors = [self.make_sentence_tensor(sentence, self.max_len) for sentence in indexed_sentences]
 
         X = torch.stack(sentence_tensors)
+
+        # Build one-hot representation for labels
+        # onehot_sentiments = [[1, 0] if label == 0 else [0, 1] for label in sentiments]
         y = torch.Tensor(sentiments).long()
 
         return TensorDataset(X, y)
 
-
     @staticmethod
-    def load_from(path):
-        return SentimentDataset(*read_sentiment_data(path)[:-1])
+    def load_from(path, word_indexer=None):
+        examples, _ = read_sentiment_data(path, word_indexer)
+        return SentimentDataset(examples, word_indexer)
 
 
 class WordVectors:
@@ -128,16 +128,11 @@ class WordVectors:
         return self.vectors[self.word_indexer[Indexer.UNK_SYMBOL]]
 
 
+def load_sentiment_data(embedding_size):
+    word_vectors = WordVectors(*load_glove_embeddings(embedding_size))
 
+    train_dataset = SentimentDataset.load_from(TRAIN_PATH, word_vectors.word_indexer)
+    dev_dataset = SentimentDataset.load_from(DEV_PATH, word_vectors.word_indexer)
 
-def load_sentiment_data():
-    train_dataset = SentimentDataset.load_from(TRAIN_PATH)
-    dev_dataset = SentimentDataset.load_from(DEV_PATH)
-    return train_dataset, dev_dataset
+    return train_dataset, dev_dataset, word_vectors
 
-if __name__ == '__main__':
-    train_data = SentimentDataset.load_from(TRAIN_PATH)
-    train_data.create_tensor_dataset()
-    dev_data = SentimentDataset.load_from(DEV_PATH)
-
-    print("finished loading data.")

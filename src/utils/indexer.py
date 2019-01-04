@@ -39,6 +39,12 @@ class Indexer:
         self.int2obj[idx] = obj
         return idx
 
+    def union(self, other):
+        for obj in other.obj2int:
+            self.add(obj)
+
+
+
     @staticmethod
     def create_indexer(with_symbols=True):
         indexer = Indexer()
@@ -48,6 +54,7 @@ class Indexer:
 
         return indexer
 
+
     def __getitem__(self, item):
         assert type(item) in (self.obj_type, self.idx_type)
 
@@ -56,6 +63,8 @@ class Indexer:
 
         elif type(item) == self.idx_type:
             return self.get_obj(item)
+
+
     def __len__(self):
         assert len(self.obj2int) == len(self.int2obj)
         return len(self.obj2int)
