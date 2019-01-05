@@ -37,7 +37,7 @@ def train_simple_ffnn(train_data: SentimentDataset, test_data, word_vectors: Wor
 
     for epoch in range(args.epochs):
         epoch_loss = 0
-        for i_batch, (X_batch, y_batch) in enumerate(data_loader):
+        for i_batch, (X_batch, y_batch, input_lengths) in enumerate(data_loader):
             model.zero_grad()
             log_probs = model(X_batch)
 
@@ -56,17 +56,17 @@ def train_simple_ffnn(train_data: SentimentDataset, test_data, word_vectors: Wor
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--batch_size', type=int, default=10,
+    parser.add_argument('--batch_size', type=int, default=64,
                         help='input batch size for training (default: 64)')
     parser.add_argument('--val_batch_size', type=int, default=1,
                         help='input batch size for validation (default: 1000)')
     parser.add_argument('--test_batch_size', type=int, default=1,
                         help='input batch size for test (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=10,
+    parser.add_argument('--epochs', type=int, default=20,
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--lr', type=float, default=0.001,
                         help='learning rate (default: 0.01)')
-    parser.add_argument('--freeze', type=bool, default=True,
+    parser.add_argument('--freeze', type=bool, default=False,
                         help='freeze embedding layer (default: True)')
 
     args = parser.parse_args()

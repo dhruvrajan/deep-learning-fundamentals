@@ -1,12 +1,11 @@
-from nltk import word_tokenize, WordNetLemmatizer
 import re
-from torch.utils.data import TensorDataset
-import torch.nn.functional as F
-from torch import Tensor
 import torch
-from utils.indexer import Indexer
+import torch.nn.functional as F
+from nltk import word_tokenize, WordNetLemmatizer
+from torch.utils.data import TensorDataset
+
 from utils.glove_embeddings import load_glove_embeddings
-from sklearn.preprocessing import LabelBinarizer
+from utils.indexer import Indexer
 
 TRAIN_PATH = "data/sentiment-analysis/train.txt"
 DEV_PATH = "data/sentiment-analysis/dev.txt"
@@ -98,17 +97,16 @@ class SentimentDataset:
 
     def create_tensor_dataset(self):
         indexed_sentences = [ex.indexed_words for ex in self.examples]
+        input_lengths = [len(sentence) for sentence in indexed_sentences]
         sentiments = [ex.sentiment for ex in self.examples]
 
         sentence_tensors = [self.make_sentence_tensor(sentence, self.max_len) for sentence in indexed_sentences]
 
         X = torch.stack(sentence_tensors)
-
-        # Build one-hot representation for labels
-        # onehot_sentiments = [[1, 0] if label == 0 else [0, 1] for label in sentiments]
         y = torch.Tensor(sentiments).long()
+        input_lengths_tensor = torch.Tensor(input_lengths).long()
 
-        return TensorDataset(X, y)
+        return TensorDataset(X, y, input_lengths_tensor)
 
     @staticmethod
     def load_from(path, word_indexer=None):
