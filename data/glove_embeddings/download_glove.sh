@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [ -e "./data/glove.6B.zip" ]; then
+if [ -e "glove.6B.zip" ]; then
     echo "glove embeddings already exist"
 else
     echo "downloading glove embeddings..."

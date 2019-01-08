@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [ -e "./data/mini2-distrib.tgz" ]; then
+if [ -e "mini2-distrib.tgz" ]; then
     echo "sentiment data already exists; remove mini2-distrib.tgz to download again."
 else
     echo "downloading sentiment analysis data from Prof. Greg Durrett's 388..."
