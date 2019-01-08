@@ -32,6 +32,12 @@ class SimpleFFNN(nn.Module):
         self.fc4 = nn.Linear(hid3, out)
         self.init_weights()
 
+        self.summary = {
+            "model_type": "SimpleFFNN",
+            "layers": [inp, hid1, hid2, hid3, out],
+            "freeze_embeddings": freeze,
+        }
+
     def init_weights(self):
         nn.init.xavier_uniform_(self.fc1.weight)
         nn.init.xavier_uniform_(self.fc2.weight)
@@ -46,23 +52,37 @@ class SimpleFFNN(nn.Module):
 
 
 class SimpleLSTM(nn.Module):
-    def __init__(self, word_vectors, inp, hid, out, lstm_dropout, bidirectional, freeze=False):
+    def __init__(self, word_vectors, inp, hid, out, lstm_dropout, bidirectional, args):
         super(SimpleLSTM, self).__init__()
-        self.embedding_layer = PretrainedEmbeddingLayer(word_vectors, freeze=freeze)
-        self.lstm = nn.LSTM(inp, hid, dropout=lstm_dropout, bidirectional=bidirectional)
+        self.batch_size = args.batch_size
+        self.bidirectional = bidirectional
+        self.embedding_size = inp
+        self.hidden_size = hid
+        self.out = out
+        self.embedding_layer = PretrainedEmbeddingLayer(word_vectors, freeze=args.freeze)
+        self.lstm = nn.LSTM(inp, hid, dropout=lstm_dropout, bidirectional=self.bidirectional)
 
-        self.hidden_to_tag = nn.Linear(hid, out)
+        self.hidden_to_tag = nn.Linear(hid * (2 if self.bidirectional else 1), out)
         self.hidden_state = self.init_hidden(hid)
 
-    def init_hidden(self, hidden_size):
-        return (torch.zeros(2, 1, hidden_size),
-                torch.zeros(2, 1, hidden_size))
+        self.summary = {
+            "model_type": "SimpleLSTM",
+            "bidirectional": self.bidirectional,
+            "inp": self.embedding_size,
+            "hid": self.hidden_size,
+            "out": self.out,
+            "freeze_embeddings": args.freeze,
+            "lstm_dropout": lstm_dropout
+        }
+
+    def init_hidden(self, hidden_size, batch_size=None):
+        if not batch_size:
+            batch_size = self.batch_size
+        return (torch.zeros(2 if self.bidirectional else 1, batch_size, hidden_size),
+                torch.zeros(2 if self.bidirectional else 1, batch_size, hidden_size))
 
     def forward(self, sentence):
-        embeddings = self.embedding_layer(sentence)
-        # (seq_len, batch_size, inp_size)
-        # (
-
-        pack_padded_sequence
-        lstm_out, self.hidden = self.lstm(embeddings.view(len(sentence), 1, -1), self.hidden)
-        return F.log_softmax(self.hidden_to_tag(lstm_out.view(len(sentence), -1)), dim=1)
+        embeddings = self.embedding_layer(sentence).view(sentence.shape[1], sentence.shape[0], -1)
+        lstm_out, self.hidden_state = self.lstm(embeddings, self.hidden_state)
+        tag = self.hidden_to_tag(self.hidden_state[0]).view(64, 2)
+        return F.log_softmax(tag, dim=1)

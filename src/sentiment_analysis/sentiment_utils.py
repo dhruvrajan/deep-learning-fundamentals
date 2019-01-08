@@ -1,6 +1,7 @@
 import re
 import torch
 import torch.nn.functional as F
+from torch.nn.utils.rnn import pad_sequence
 from nltk import word_tokenize, WordNetLemmatizer
 from torch.utils.data import TensorDataset
 
@@ -12,23 +13,13 @@ DEV_PATH = "data/sentiment-analysis/dev.txt"
 
 
 class SentimentExample:
-    def __init__(self, sentiment, indexed_words, words, pad_to=None):
+    def __init__(self, sentiment, indexed_words, words):
         self.sentiment = sentiment
         self.indexed_words = indexed_words
         self.words = words
-        self.pad_to = pad_to if pad_to else len(indexed_words)
 
     def __repr__(self):
         return str(self.sentiment) + ", " + str(self.words[:min(len(self.words), 50)]) + "...\n"
-
-
-def apply_index(sentence, word_index, padding=None):
-    tokens = word_tokenize(sentence)
-
-
-def create_example(line, indexer):
-    sentiment, sentence = line.strip().split("\t")
-    tokenized = word_tokenize(sentence)
 
 
 def clean_str(string):
@@ -85,26 +76,21 @@ class SentimentDataset:
     def __init__(self, examples=None, word_indexer=None):
         self.examples = examples
         self.word_indexer = word_indexer
-        self.max_len = len(max(self.examples, key=lambda ex: len(ex.indexed_words)).indexed_words)
 
-
-    def make_sentence_tensor(self, indexed_words, pad_to):
-        assert len(indexed_words) <= pad_to
-        tensor = torch.Tensor(indexed_words).long()
-        padding = pad_to - tensor.shape[0]
-        pad_value = self.word_indexer.get_idx(Indexer.PAD_SYMBOL)
-        return F.pad(tensor, [0, padding], mode="constant", value=pad_value)
-
-    def create_tensor_dataset(self):
+    def create_tensor_dataset(self, batch_size):
         indexed_sentences = [ex.indexed_words for ex in self.examples]
         input_lengths = [len(sentence) for sentence in indexed_sentences]
         sentiments = [ex.sentiment for ex in self.examples]
 
-        sentence_tensors = [self.make_sentence_tensor(sentence, self.max_len) for sentence in indexed_sentences]
+        sentence_tensors = [torch.Tensor(sentence).long() for sentence in indexed_sentences]
+        padded_sentences = pad_sequence(sentence_tensors, batch_first=True)
 
-        X = torch.stack(sentence_tensors)
-        y = torch.Tensor(sentiments).long()
-        input_lengths_tensor = torch.Tensor(input_lengths).long()
+        until = (padded_sentences.shape[0] % batch_size) * -1
+
+        X = padded_sentences[:until]
+        y = torch.Tensor(sentiments).long()[:until]
+        input_lengths_tensor = torch.Tensor(input_lengths).long()[:until]
+
 
         return TensorDataset(X, y, input_lengths_tensor)
 
@@ -134,3 +120,5 @@ def load_sentiment_data(embedding_size):
 
     return train_dataset, dev_dataset, word_vectors
 
+if __name__ == '__main__':
+    load_sentiment_data(50)
