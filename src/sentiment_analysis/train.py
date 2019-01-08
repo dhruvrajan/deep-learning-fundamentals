@@ -7,7 +7,7 @@ from torch import optim
 from torch.utils.data import DataLoader
 
 from sentiment_analysis.models import SimpleFFNN, SimpleLSTM
-from sentiment_analysis.sentiment_utils import load_sentiment_data, SentimentDataset, WordVectors
+from sentiment_analysis.sentiment_data import load_sentiment_data, SentimentDataset, WordVectors
 
 
 def create_summary_writer(model, data_loader, log_dir):
