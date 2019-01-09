@@ -25,6 +25,8 @@ def train_sentiment_model(model, loss_function, optimizer, create_trainer, creat
     train_tensors = train_data.create_tensor_dataset(args.batch_size)
     test_tensors = test_data.create_tensor_dataset(args.val_batch_size)
 
+    print(args.batch_size ,args.val_batch_size)
+
     train_loader = DataLoader(train_tensors, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(test_tensors, batch_size=args.val_batch_size, shuffle=True)
 

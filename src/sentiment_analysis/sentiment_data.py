@@ -87,9 +87,9 @@ class SentimentDataset:
 
         until = (padded_sentences.shape[0] % batch_size) * -1
 
-        X = padded_sentences[:until]
-        y = torch.Tensor(sentiments).long()[:until]
-        input_lengths_tensor = torch.Tensor(input_lengths).long()[:until]
+        X = padded_sentences#[:until]
+        y = torch.Tensor(sentiments).long()#[:until]
+        input_lengths_tensor = torch.Tensor(input_lengths).long()#[:until]
 
 
         return TensorDataset(X, y, input_lengths_tensor)
