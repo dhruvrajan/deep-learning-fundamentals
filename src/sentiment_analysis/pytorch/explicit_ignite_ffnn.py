@@ -6,9 +6,9 @@ from argparse import ArgumentParser
 from ignite.engine import Engine
 from torch.optim import Adam
 
-from sentiment_analysis.models import SimpleFFNN
+from sentiment_analysis.pytorch.models import SimpleFFNN
 from sentiment_analysis.sentiment_data import load_sentiment_data
-from sentiment_analysis.sentiment_trainer import train_sentiment_model
+from sentiment_analysis.pytorch.sentiment_trainer import train_sentiment_model
 
 
 def sentiment_args(parser):

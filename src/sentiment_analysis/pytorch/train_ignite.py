@@ -9,7 +9,7 @@ from tensorboardX import SummaryWriter
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
-from sentiment_analysis.models import SimpleFFNN, SimpleLSTM
+from sentiment_analysis.pytorch.models import SimpleLSTM
 from sentiment_analysis.sentiment_data import load_sentiment_data
 
 

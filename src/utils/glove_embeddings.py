@@ -31,9 +31,11 @@ def read_word_embeddings(embeddings_file):
             float_numbers = [float(number_str) for number_str in numbers.split()]
             # print repr(float_numbers)
             vector = np.array(float_numbers)
-            word_indexer.add(word)
-            vectors.append(vector)
-            count += 1
+
+            if not word_indexer.has_obj(word):
+                word_indexer.add(word)
+                vectors.append(vector)
+                count += 1
             # print repr(word) + " : " + repr(vector)
 
     f.close()
