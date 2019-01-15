@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 from argparse import ArgumentParser
 from ignite.engine import Engine
+from torch.nn.utils.rnn import pack_padded_sequence
 from torch.optim import Adam
 
 from sentiment_analysis.pytorch.models import SimpleLSTM
@@ -12,9 +13,9 @@ from sentiment_analysis.pytorch.sentiment_trainer import train_sentiment_model
 
 
 def sentiment_args(parser):
-    parser.add_argument("--batch_size", type=int, default=1,
+    parser.add_argument("--batch_size", type=int, default=64,
                         help="input batch size for training (default: 64)")
-    parser.add_argument("--val_batch_size", type=int, default=1,
+    parser.add_argument("--val_batch_size", type=int, default=64,
                         help="input batch size for validation (default: 1000)")
     parser.add_argument("--test_batch_size", type=int, default=1,
                         help="input batch size for test (default: 1000)")
@@ -38,15 +39,14 @@ def sentiment_args(parser):
                         help="identifier for the run")
 
 
-def create_lstm_trainer(model: nn.Module, optimizer, loss_function, args):
+def create_lstm_trainer(model: SimpleLSTM, optimizer, loss_function, args):
     def _training_step(engine, batch):
         model.train()
-        # model.zero_grad()
-        optimizer.zero_grad()
+        model.zero_grad()
 
         X, y, input_lengths = batch
-        # model.hidden_state = model.init_hidden(model.hidden_dim, X.shape[0])
-        model.hidden = model.init_hidden()
+        model.hidden_state = model.init_hidden(X.shape[0])
+
         log_probs = model(X, input_lengths)
         loss = loss_function(log_probs, y)
 
@@ -78,7 +78,7 @@ def main(args):
     print("TensorboardX output at: ", args.log_dir)
     train_data, test_data, word_vectors = load_sentiment_data(args.embedding_size)
 
-    model = SimpleLSTM(word_vectors, args.embedding_size, 10, 2, 0.2, False, args)
+    model = SimpleLSTM(word_vectors, args.embedding_size, 50, 2, 0.2, False, args)
     loss_function = nn.NLLLoss()
     optimizer = Adam(model.parameters(), args.lr)
 
