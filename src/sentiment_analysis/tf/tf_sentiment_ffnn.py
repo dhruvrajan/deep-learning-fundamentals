@@ -1,10 +1,10 @@
 import time
-import numpy as np
-import tensorflow as tf
+
 from argparse import ArgumentParser
 from datetime import datetime
 
 from sentiment_analysis.sentiment_data import SentimentDataset, load_sentiment_data
+from sentiment_analysis.tf.tf_models import *
 
 
 def sentiment_args(parser):
@@ -38,38 +38,6 @@ def sentiment_args(parser):
                         help="log directory for Tensorboard log output")
 
 
-def embedding_layer(X, word_vectors, trainable=False, name="embedding_layer"):
-    with tf.name_scope(name):
-        embeddings = tf.Variable(word_vectors.vectors, trainable=trainable)
-        return tf.nn.embedding_lookup(embeddings, X)
-
-
-def xavier_normal(in_dim, out_dim, name="kernel"):
-    stddev = 2 / np.sqrt(in_dim + out_dim)
-    return tf.truncated_normal((in_dim, out_dim), stddev=stddev)
-
-
-def linear_layer(X, out_dim, name, activation=None):
-    with tf.name_scope(name):
-        in_dim = int(X.get_shape()[1])
-
-        # linear layer definition
-        W = tf.Variable(xavier_normal(in_dim, out_dim), name="kernel")
-        b = tf.Variable(tf.zeros([out_dim]), name="bias")
-        Z = tf.matmul(tf.cast(X, tf.float32), W) + b
-
-        return activation(Z) if activation else Z
-
-
-def sentiment_model(X, word_vectors, hid1, hid2, hid3, out, freeze, name="sentiment_model"):
-    with tf.name_scope(name):
-        embeddings = embedding_layer(X, word_vectors, trainable=not freeze)
-        averaged_embeddings = tf.reduce_mean(embeddings, axis=1)
-        hidden1 = linear_layer(averaged_embeddings, hid1, name="hidden1", activation=tf.nn.tanh)
-        hidden2 = linear_layer(hidden1, hid2, name="hidden2", activation=tf.nn.sigmoid)
-        hidden3 = linear_layer(hidden2, hid3, name="hidden3", activation=tf.nn.tanh)
-        output = linear_layer(hidden3, out, name="output_layer", activation=tf.nn.log_softmax)
-        return output
 
 
 def train_ffnn(train_data: SentimentDataset, dev_data: SentimentDataset, word_vectors):
@@ -83,7 +51,8 @@ def train_ffnn(train_data: SentimentDataset, dev_data: SentimentDataset, word_ve
         X = tf.placeholder(tf.int32, shape=(None, input_features), name="X")
         y = tf.placeholder(tf.int32, shape=(None), name="y")
 
-    log_probs = sentiment_model(X, word_vectors, 8, 4, 1, 2, freeze=args.freeze)
+    # log_probs = ffnn_sentiment_model(X, word_vectors, 8, 4, 1, 2, freeze=args.freeze)
+    log_probs = rnn_sentiment_model(X, 15, 2, word_vectors)
 
     with tf.name_scope("loss"):
         xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y, logits=log_probs)
@@ -150,4 +119,5 @@ if __name__ == '__main__':
     sentiment_args(parser)
     args = parser.parse_args()
 
+    start = time.time()
     main(args)
