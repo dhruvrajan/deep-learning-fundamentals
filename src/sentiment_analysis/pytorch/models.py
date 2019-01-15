@@ -52,80 +52,43 @@ class SimpleFFNN(nn.Module):
 
 
 class SimpleLSTM(nn.Module):
-    # def __init__(self, embedding_dim, hidden_dim, vocab_size, tagset_size):
     def __init__(self, word_vectors, inp, hid, out, lstm_dropout, bidirectional, args):
-        embedding_dim = args.embedding_size
-        hidden_dim = hid
-        tagset_size = out
-
-
         super(SimpleLSTM, self).__init__()
-        self.hidden_dim = hidden_dim
+        self.batch_size = args.batch_size
+        self.bidirectional = bidirectional
+        self.embedding_size = inp
+        self.hidden_dim = hid
+        self.out = out
 
-        self.word_embeddings = PretrainedEmbeddingLayer(word_vectors, freeze=args.freeze)#nn.Embedding(vocab_size, embedding_dim)
+        self.embedding_layer = PretrainedEmbeddingLayer(word_vectors, freeze=args.freeze)
+        self.lstm = nn.LSTM(inp, hid, dropout=lstm_dropout, bidirectional=self.bidirectional)
 
-        # The LSTM takes word embeddings as inputs, and outputs hidden states
-        # with dimensionality hidden_dim.
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim)
+        self.hidden_to_tag = nn.Linear(hid * (2 if self.bidirectional else 1), out)
+        self.hidden_state = self.init_hidden()
 
-        # The linear layer that maps from hidden state space to tag space
-        self.hidden2tag = nn.Linear(hidden_dim, tagset_size)
-        self.hidden = self.init_hidden()
+        self.init_weights()
 
-    def init_hidden(self):
-        # Before we've done anything, we dont have any hidden state.
-        # Refer to the Pytorch documentation to see exactly
-        # why they have this dimensionality.
-        # The axes semantics are (num_layers, minibatch_size, hidden_dim)
-        return (torch.zeros(1, 1, self.hidden_dim),
-                torch.zeros(1, 1, self.hidden_dim))
+        self.summary = {
+            "model_type": "SimpleLSTM",
+            "bidirectional": self.bidirectional,
+            "inp": self.embedding_size,
+            "hid": self.hidden_dim,
+            "out": self.out,
+            "freeze_embeddings": args.freeze,
+            "lstm_dropout": lstm_dropout
+        }
 
-    def forward(self, sentence, *args):
-        # sentence = sentence[-1]
-        embeds = self.word_embeddings(sentence)[-1]
-        lstm_out, self.hidden = self.lstm(
-            embeds.view(len(embeds), 1, -1), self.hidden)
-        tag_space = self.hidden2tag(lstm_out[-1])#.view(len(embeds), -1))
-        tag_scores = F.log_softmax(tag_space, dim=1)
-        return tag_scores
+    def init_weights(self):
+        nn.init.xavier_uniform_(self.hidden_to_tag.weight)
 
-# class SimpleLSTM(nn.Module):
-#     def __init__(self, word_vectors, inp, hid, out, lstm_dropout, bidirectional, args):
-#         super(SimpleLSTM, self).__init__()
-#         self.batch_size = args.batch_size
-#         self.bidirectional = bidirectional
-#         self.embedding_size = inp
-#         self.hidden_size = hid
-#         self.out = out
-#         ##
-#         self.embedding_layer = PretrainedEmbeddingLayer(word_vectors, freeze=args.freeze)
-#         self.lstm = nn.LSTM(inp, hid, dropout=lstm_dropout, bidirectional=self.bidirectional)
-#
-#         self.hidden_to_tag = nn.Linear(hid * (2 if self.bidirectional else 1), out)
-#         self.hidden_state = self.init_hidden(hid)
-#
-#         self.init_weights()
-#
-#         self.summary = {
-#             "model_type": "SimpleLSTM",
-#             "bidirectional": self.bidirectional,
-#             "inp": self.embedding_size,
-#             "hid": self.hidden_size,
-#             "out": self.out,
-#             "freeze_embeddings": args.freeze,
-#             "lstm_dropout": lstm_dropout
-#         }
-#     def init_weights(self):
-#         nn.init.xavier_uniform_(self.hidden_to_tag.weight)
-#
-#     def init_hidden(self, hidden_size, batch_size=None):
-#         if not batch_size:
-#             batch_size = self.batch_size
-#         return (torch.zeros(2 if self.bidirectional else 1, batch_size, hidden_size),
-#                 torch.zeros(2 if self.bidirectional else 1, batch_size, hidden_size))
-#
-#     def forward(self, sentence, input_lengths=None):
-#         embeddings = self.embedding_layer(sentence).view(sentence.shape[1], sentence.shape[0], -1)
-#         lstm_out, self.hidden_state = self.lstm(embeddings, self.hidden_state)
-#         tag = self.hidden_to_tag(lstm_out[-1])
-#         return F.log_softmax(tag, dim=1)
+    def init_hidden(self, batch_size=None):
+        if not batch_size:
+            batch_size = self.batch_size
+        return (torch.zeros(2 if self.bidirectional else 1, batch_size, self.hidden_dim),
+                torch.zeros(2 if self.bidirectional else 1, batch_size, self.hidden_dim))
+
+    def forward(self, sentence, input_lengths=None):
+        embeddings = self.embedding_layer(sentence).view(sentence.shape[1], sentence.shape[0], -1)
+        lstm_out, self.hidden_state = self.lstm(embeddings, self.hidden_state)
+        tag = self.hidden_to_tag(lstm_out[-1])
+        return F.log_softmax(tag, dim=1)

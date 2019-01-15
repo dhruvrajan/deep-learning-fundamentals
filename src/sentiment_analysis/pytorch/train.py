@@ -118,7 +118,7 @@ def train_simple_lstm(train_data: SentimentDataset, test_data, word_vectors: Wor
         for i_batch, (X_batch, y_batch, input_lengths) in enumerate(data_loader):
             if X_batch.shape[0] == args.batch_size:
                 model.zero_grad()
-                model.hidden_state = model.init_hidden(model.hidden_size)
+                model.hidden_state = model.init_hidden(model.hidden_dim)
                 log_probs = model(X_batch)
 
                 loss = loss_function(log_probs, y_batch)
