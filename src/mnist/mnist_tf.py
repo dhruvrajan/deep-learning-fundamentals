@@ -63,7 +63,7 @@ def main(args):
     training_op = optimizer.minimize(loss)
 
     correct = tf.nn.in_top_k(log_probs, y, 1)
-    accuracy =tf.reduce_mean(tf.cast(correct, tf.float32))
+    accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
 
     init = tf.global_variables_initializer()
 
